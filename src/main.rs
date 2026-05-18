@@ -470,8 +470,20 @@ fn download_mods(client: &Client, mods_dir: &Path, logger: &Logger) -> Result<()
         ModSpec {
             project_ref: "sodium",
             display_name: "Sodium",
-            exact_version: None,
+            exact_version: Some("mc1.21.1-0.6.13-neoforge"),
             required: true,
+        },
+        ModSpec {
+            project_ref: "iris",
+            display_name: "Iris Shaders",
+            exact_version: Some("1.8.12+1.21.1-neoforge"),
+            required: false,
+        },
+        ModSpec {
+            project_ref: "wi-zoom",
+            display_name: "WI Zoom",
+            exact_version: Some("1.6-MC1.21.1-NeoForge"),
+            required: false,
         },
         ModSpec {
             project_ref: "modernfix",
@@ -813,10 +825,6 @@ fn remove_managed_launcher_profiles(profiles: &mut Map<String, Value>) {
                 || ((last_version_id == OLD_NEOFORGE_VERSION_ID || last_version_id == NEOFORGE_VERSION_ID)
                     && game_dir.contains(GAME_DIR_NAME));
 
-            // The official NeoForge installer creates a generic launcher profile named
-            // "NeoForge" for the installed version. This private installer should leave
-            // users with exactly one visible profile: "Pixelmon Friends". Remove only the
-            // auto-generated generic NeoForge profiles for the versions this tool manages.
             let is_neoforge_auto_profile = profile_name.eq_ignore_ascii_case("NeoForge")
                 && (last_version_id == OLD_NEOFORGE_VERSION_ID || last_version_id == NEOFORGE_VERSION_ID);
 
