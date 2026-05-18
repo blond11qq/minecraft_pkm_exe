@@ -1,0 +1,97 @@
+name: Build Windows
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  PROJECT_DIR: pixelmon-friends-setup
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Show Rust versions
+        run: |
+          rustc --version
+          cargo --version
+
+      - name: Install Rust components
+        run: rustup component add rustfmt clippy
+
+      - name: Format Rust source
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: cargo fmt
+
+      - name: Run tests
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: cargo test
+
+      - name: Run clippy
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Build release
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: cargo build --release
+
+      - name: Package artifact
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item "${{ env.PROJECT_DIR }}/target/release/pixelmon-friends-setup.exe" dist/PixelmonFriends.exe
+          Compress-Archive -Path dist/PixelmonFriends.exe -DestinationPath dist/PixelmonFriends-windows.zip -Force
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PixelmonFriends-windows
+          path: |
+            dist/PixelmonFriends.exe
+            dist/PixelmonFriends-windows.zip
+
+      - name: Publish latest GitHub Release
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -f latest $env:GITHUB_SHA
+          git push origin refs/tags/latest --force
+
+          $notes = @"
+          자동 Windows 빌드입니다.
+
+          Commit: $env:GITHUB_SHA
+          Run: $env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID
+          "@
+
+          gh release view latest *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create latest `
+              dist/PixelmonFriends.exe `
+              dist/PixelmonFriends-windows.zip `
+              --title "Latest Windows Build" `
+              --notes $notes
+          } else {
+            gh release edit latest `
+              --title "Latest Windows Build" `
+              --notes $notes
+            gh release upload latest `
+              dist/PixelmonFriends.exe `
+              dist/PixelmonFriends-windows.zip `
+              --clobber
+          }

@@ -1,0 +1,90 @@
+name: Release Windows EXE
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to create, for example v0.1.0"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  PROJECT_DIR: pixelmon-friends-setup
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve release tag
+        id: release_tag
+        shell: pwsh
+        run: |
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            "tag=${{ inputs.tag }}" >> $env:GITHUB_OUTPUT
+          } else {
+            "tag=${{ github.ref_name }}" >> $env:GITHUB_OUTPUT
+          }
+          "target=${{ github.sha }}" >> $env:GITHUB_OUTPUT
+
+      - name: Show Rust versions
+        run: |
+          rustc --version
+          cargo --version
+
+      - name: Install Rust components
+        run: rustup component add rustfmt clippy
+
+      - name: Format Rust source
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: cargo fmt
+
+      - name: Run tests
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: cargo test
+
+      - name: Run clippy
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Build release
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: cargo build --release
+
+      - name: Package release assets
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item "${{ env.PROJECT_DIR }}/target/release/pixelmon-friends-setup.exe" dist/PixelmonFriends.exe
+          Compress-Archive -Path dist/PixelmonFriends.exe -DestinationPath dist/PixelmonFriends-windows.zip -Force
+
+      - name: Create or update GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release_tag.outputs.tag }}
+          RELEASE_TARGET: ${{ steps.release_tag.outputs.target }}
+        run: |
+          gh release view "$env:RELEASE_TAG" *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create "$env:RELEASE_TAG" `
+              --target "$env:RELEASE_TARGET" `
+              --title "$env:RELEASE_TAG" `
+              --notes "Windows build of PixelmonFriends.exe"
+          }
+
+          gh release upload "$env:RELEASE_TAG" `
+            dist/PixelmonFriends.exe `
+            dist/PixelmonFriends-windows.zip `
+            --clobber
