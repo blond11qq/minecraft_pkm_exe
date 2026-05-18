@@ -8,6 +8,11 @@ Pixelmon Friends 서버 접속에 필요한 클라이언트 설치 파일입니�
 
 [PixelmonFriendsClient.exe 다운로드](https://github.com/blond11qq/minecraft_pkm_exe/releases/download/client-1-1/PixelmonFriendsClient.exe)
 
+## 서버 주소
+
+```text
+34.64.32.34:25565
+```
 ## 실행 순서
 
 1. Minecraft Launcher를 완전히 종료합니다.
@@ -16,7 +21,6 @@ Pixelmon Friends 서버 접속에 필요한 클라이언트 설치 파일입니�
 4. Minecraft Launcher를 다시 실행합니다.
 5. `Pixelmon Friends` 프로필을 선택해서 실행합니다.
 
-## 서버 주소
+지예아~
 
-```text
-34.64.32.34:25565
+
